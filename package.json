@@ -1,27 +1,26 @@
 {
-  "name": "vue",
-  "private": true,
+  "name": "user-sync-app",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "dev": "vite --force",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vueuse/core": "^13.3.0",
-    "bcryptjs": "^3.0.2",
+    "bcryptjs": "^2.4.3",
     "crypto-js": "^4.2.0",
     "idb": "^8.0.3",
-    "pinia": "^3.0.2",
-    "vue": "^3.5.13",
-    "vue-router": "^4.5.1"
+    "pinia": "^2.1.7",
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.3",
+    "@vitejs/plugin-vue": "^4.5.0",
     "@vue/tsconfig": "^0.7.0",
-    "typescript": "~5.8.3",
-    "vite": "^6.3.5",
-    "vue-tsc": "^2.2.8"
+    "typescript": "^5.8.3",
+    "vite": "^5.0.0",
+    "vite-plugin-pwa": "^0.17.4"
   }
 }

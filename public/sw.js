@@ -2,11 +2,7 @@ const CACHE_NAME = 'user-sync-cache-v1'
 const urlsToCache = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/src/style.css',
-  '/src/App.vue',
-  '/src/views/Login.vue',
-  '/src/views/Home.vue'
+  '/manifest.json'
 ]
 
 self.addEventListener('install', (event) => {
@@ -17,23 +13,42 @@ self.addEventListener('install', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  // Skip chrome-extension requests and non-GET requests
+  if (event.request.url.startsWith('chrome-extension://') || event.request.method !== 'GET') {
+    return
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
         if (response) {
           return response
         }
+
         return fetch(event.request)
           .then((response) => {
+            // Check if we received a valid response
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response
             }
+
+            // Clone the response
             const responseToCache = response.clone()
+
+            // Cache the response
             caches.open(CACHE_NAME)
               .then((cache) => {
                 cache.put(event.request, responseToCache)
               })
+              .catch(error => {
+                console.error('Cache error:', error)
+              })
+
             return response
+          })
+          .catch(error => {
+            console.error('Fetch error:', error)
+            return new Response('Network error', { status: 500 })
           })
       })
   )

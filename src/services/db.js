@@ -2,72 +2,113 @@ import { openDB } from 'idb'
 
 const DB_NAME = 'userSyncDB'
 const DB_VERSION = 1
-const USER_STORE = 'users'
-const AUTH_STORE = 'auth'
+const STORES = {
+  USERS: 'users',
+  AUTH: 'auth'
+}
 
-const dbPromise = openDB(DB_NAME, DB_VERSION, {
-  upgrade(db) {
-    if (!db.objectStoreNames.contains(USER_STORE)) {
-      const userStore = db.createObjectStore(USER_STORE, { keyPath: 'id' })
-      userStore.createIndex('username', 'username', { unique: true })
-    }
-    
-    if (!db.objectStoreNames.contains(AUTH_STORE)) {
-      db.createObjectStore(AUTH_STORE, { keyPath: 'id' })
-    }
+class DBService {
+  constructor() {
+    this.db = null
+    this.init()
   }
-})
 
-export const dbService = {
-  async addUser(user) {
-    const db = await dbPromise
-    return db.add(USER_STORE, user)
-  },
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION)
 
-  async updateUser(user) {
-    const db = await dbPromise
-    return db.put(USER_STORE, user)
-  },
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        this.db = request.result
+        resolve()
+      }
 
-  async getUser(id) {
-    const db = await dbPromise
-    return db.get(USER_STORE, id)
-  },
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result
 
-  async getUserByUsername(username) {
-    const db = await dbPromise
-    const tx = db.transaction(USER_STORE, 'readonly')
-    const index = tx.store.index('username')
-    return index.get(username)
-  },
+        // Create users store
+        if (!db.objectStoreNames.contains(STORES.USERS)) {
+          const userStore = db.createObjectStore(STORES.USERS, { keyPath: 'id' })
+          userStore.createIndex('username', 'username', { unique: true })
+        }
 
-  async getAllUsers() {
-    const db = await dbPromise
-    return db.getAll(USER_STORE)
-  },
+        // Create auth store
+        if (!db.objectStoreNames.contains(STORES.AUTH)) {
+          db.createObjectStore(STORES.AUTH, { keyPath: 'id' })
+        }
+      }
+    })
+  }
 
-  async deleteUser(id) {
-    const db = await dbPromise
-    return db.delete(USER_STORE, id)
-  },
-
-  async clearUsers() {
-    const db = await dbPromise
-    return db.clear(USER_STORE)
-  },
-
-  async saveAuthData(authData) {
-    const db = await dbPromise
-    return db.put(AUTH_STORE, { id: 'current', ...authData })
-  },
+  async saveAuthData(userData) {
+    return this.save(STORES.AUTH, { id: 'current', ...userData })
+  }
 
   async getAuthData() {
-    const db = await dbPromise
-    return db.get(AUTH_STORE, 'current')
-  },
+    return this.get(STORES.AUTH, 'current')
+  }
 
   async clearAuthData() {
-    const db = await dbPromise
-    return db.delete(AUTH_STORE, 'current')
+    return this.delete(STORES.AUTH, 'current')
   }
-} 
+
+  async updateUser(user) {
+    return this.save(STORES.USERS, user)
+  }
+
+  async getUserByUsername(username) {
+    const store = this.getStore(STORES.USERS, 'readonly')
+    const index = store.index('username')
+    return new Promise((resolve, reject) => {
+      const request = index.get(username)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async getAllUsers() {
+    return this.getAll(STORES.USERS)
+  }
+
+  async save(storeName, data) {
+    const store = this.getStore(storeName, 'readwrite')
+    return new Promise((resolve, reject) => {
+      const request = store.put(data)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async get(storeName, key) {
+    const store = this.getStore(storeName, 'readonly')
+    return new Promise((resolve, reject) => {
+      const request = store.get(key)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async getAll(storeName) {
+    const store = this.getStore(storeName, 'readonly')
+    return new Promise((resolve, reject) => {
+      const request = store.getAll()
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async delete(storeName, key) {
+    const store = this.getStore(storeName, 'readwrite')
+    return new Promise((resolve, reject) => {
+      const request = store.delete(key)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  getStore(storeName, mode) {
+    return this.db.transaction(storeName, mode).objectStore(storeName)
+  }
+}
+
+export const dbService = new DBService() 

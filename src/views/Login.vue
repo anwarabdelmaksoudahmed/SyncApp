@@ -11,6 +11,7 @@
             v-model="username"
             required
             placeholder="أدخل اسم المستخدم"
+            autocomplete="username"
           />
         </div>
         <div class="form-group">
@@ -21,6 +22,7 @@
             v-model="password"
             required
             placeholder="أدخل كلمة المرور"
+            autocomplete="current-password"
           />
         </div>
         <button type="submit" :disabled="loading">
@@ -57,31 +59,58 @@ const handleLogin = async () => {
   
   try {
     if (navigator.onLine) {
+      console.log('Attempting online login...')
       // محاولة تسجيل الدخول عبر الإنترنت
       const user = await apiService.login(username.value, password.value)
-      await authStore.setUser(user)
+      console.log('Login successful, user data:', user)
+      
       // حفظ بيانات المستخدم في IndexedDB
       await dbService.updateUser(user)
-      router.push('/home')
+      console.log('User data saved to IndexedDB')
+      
+      // تحديث حالة المصادقة
+      await authStore.setUser(user)
+      console.log('Auth state updated, isAuthenticated:', authStore.isAuthenticated)
+      
+      // الانتقال إلى الصفحة الرئيسية
+      console.log('Attempting navigation to /home...')
+      await router.push('/home')
+      console.log('Navigation completed')
     } else {
+      console.log('Attempting offline login...')
       // محاولة تسجيل الدخول دون اتصال
       const success = await authStore.checkOfflineAuth(username.value, password.value)
       if (success) {
-        router.push('/home')
+        console.log('Offline login successful, navigating to /home...')
+        await router.push('/home')
       } else {
         error.value = 'بيانات الدخول غير صحيحة'
       }
     }
   } catch (error) {
     console.error('Login error:', error)
-    error.value = 'فشل تسجيل الدخول. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.'
+    error.value = error.message || 'فشل تسجيل الدخول. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.'
   } finally {
     loading.value = false
   }
 }
 
 // مراقبة حالة الاتصال بالإنترنت
-onMounted(() => {
+onMounted(async () => {
+  // التحقق من وجود جلسة سابقة
+  const token = localStorage.getItem('auth_token')
+  if (token) {
+    try {
+      await authStore.initAuth()
+      if (authStore.isAuthenticated) {
+        await router.push('/home')
+      }
+    } catch (error) {
+      console.error('Auth initialization error:', error)
+      localStorage.removeItem('auth_token')
+    }
+  }
+
   window.addEventListener('online', () => {
     isOffline.value = false
   })
