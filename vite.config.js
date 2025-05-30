@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 
 export default defineConfig({
   plugins: [
@@ -19,19 +20,48 @@ export default defineConfig({
             type: 'image/svg+xml'
           }
         ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/calls\.trolley\.systems\/api\//,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 10,
+              expiration: {
+                maxEntries: 1000,
+                maxAgeSeconds: 24 * 60 * 60
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
       }
     })
   ],
   server: {
-    hmr: false,
+    port: 5173,
+    host: true,
+    strictPort: false,
     watch: {
       usePolling: true
     },
-    port: 5173,
-    strictPort: true,
-    host: true
+    proxy: {
+      '/api': {
+        target: 'https://calls.trolley.systems',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
   },
-  esbuild: {
-    jsxInject: `import React from 'react'`
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src')
+    }
   }
 }) 

@@ -74,7 +74,7 @@ const handleLogin = async () => {
       
       // الانتقال إلى الصفحة الرئيسية
       console.log('Attempting navigation to /home...')
-      await router.push('/home')
+      await router.push({ name: 'Home' })
       console.log('Navigation completed')
     } else {
       console.log('Attempting offline login...')
@@ -82,7 +82,7 @@ const handleLogin = async () => {
       const success = await authStore.checkOfflineAuth(username.value, password.value)
       if (success) {
         console.log('Offline login successful, navigating to /home...')
-        await router.push('/home')
+        await router.push({ name: 'Home' })
       } else {
         error.value = 'بيانات الدخول غير صحيحة'
       }
